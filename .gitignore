@@ -1,0 +1,9 @@
+build*/
+_deps/
+*.wav
+ui_captures/
+.DS_Store
+*.user
+.vs/
+.idea/
+.vscode/

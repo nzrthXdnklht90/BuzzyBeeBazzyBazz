@@ -1,0 +1,107 @@
+name: build-and-validate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-x64
+            os: windows-latest
+            cmake_extra: -A x64
+            pluginval_zip: pluginval_Windows.zip
+            pluginval_bin: ./pluginval.exe
+          - name: macos-universal
+            os: macos-14
+            cmake_extra: -G Xcode "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+            pluginval_zip: pluginval_macOS.zip
+            pluginval_bin: ./pluginval.app/Contents/MacOS/pluginval
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        shell: bash
+        run: cmake -S . -B build ${{ matrix.cmake_extra }} -DCMAKE_BUILD_TYPE=Release -DBASSFORGE_BUILD_HOST_SMOKE=ON -DBASSFORGE_BUILD_UI_CAPTURE=ON
+
+      - name: Build (DSP tests, tools, plug-in)
+        shell: bash
+        run: cmake --build build --config Release --parallel 4
+
+      - name: DSP test suite
+        shell: bash
+        run: |
+          BIN=$(find build -type f \( -name bassforge_tests -o -name bassforge_tests.exe \) | head -1)
+          "$BIN" | tee dsp_tests.log
+
+      - name: CPU benchmark
+        shell: bash
+        run: |
+          BIN=$(find build -type f \( -name bf_bench -o -name bf_bench.exe \) | head -1)
+          "$BIN" | tee cpu_bench.log
+
+      - name: Locate artefacts
+        id: art
+        shell: bash
+        run: |
+          VST3=$(find build -type d -name "BASSFORGE.vst3" -path "*Release*" | head -1)
+          SMOKE=$(find build -type f \( -name bf_host_smoke -o -name bf_host_smoke.exe \) -path "*Release*" | head -1)
+          echo "vst3=$VST3" >> "$GITHUB_OUTPUT"
+          echo "smoke=$SMOKE" >> "$GITHUB_OUTPUT"
+          echo "VST3: $VST3"
+
+      - name: Ad-hoc sign (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          codesign --force --deep -s - "${{ steps.art.outputs.vst3 }}"
+          AU=$(find build -type d -name "BASSFORGE.component" -path "*Release*" | head -1)
+          [ -n "$AU" ] && codesign --force --deep -s - "$AU" || true
+
+      - name: Host smoke test (loads the built VST3 through the VST3 SDK hosting path)
+        shell: bash
+        run: '"${{ steps.art.outputs.smoke }}" "${{ steps.art.outputs.vst3 }}" --editor | tee host_smoke.log'
+
+      - name: pluginval (strictness 7)
+        shell: bash
+        run: |
+          curl -sSL -o pv.zip "https://github.com/Tracktion/pluginval/releases/download/v1.0.4/${{ matrix.pluginval_zip }}"
+          unzip -q -o pv.zip
+          ${{ matrix.pluginval_bin }} --strictness-level 7 --skip-gui-tests --validate-in-process --output-dir pluginval_logs "${{ steps.art.outputs.vst3 }}" | tee pluginval.log
+
+      - name: UI screenshots (real processor + editor, headless)
+        shell: bash
+        run: |
+          UI=$(find build -type f \( -name bf_ui_capture -o -name bf_ui_capture.exe \) -path "*Release*" | head -1)
+          "$UI" ui_captures | tee ui_capture.log
+
+      - name: auval (macOS AU)
+        if: runner.os == 'macOS'
+        continue-on-error: true
+        shell: bash
+        run: |
+          AU=$(find build -type d -name "BASSFORGE.component" -path "*Release*" | head -1)
+          mkdir -p ~/Library/Audio/Plug-Ins/Components && cp -R "$AU" ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar 2>/dev/null || true
+          auval -v aufx Bsfg Nzrt | tee auval.log
+
+      - name: Package
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp -R "${{ steps.art.outputs.vst3 }}" dist/
+          AU=$(find build -type d -name "BASSFORGE.component" -path "*Release*" | head -1); [ -n "$AU" ] && cp -R "$AU" dist/ || true
+          cp *.log dist/ 2>/dev/null || true
+          cp -R pluginval_logs dist/ 2>/dev/null || true
+          cp -R ui_captures dist/ui_screenshots 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BASSFORGE-${{ matrix.name }}
+          path: dist
