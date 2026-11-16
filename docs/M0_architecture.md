@@ -104,10 +104,13 @@ The DI impulse lands **exactly** on the reported latency at every rate, quality 
 
 Linux cloud vCPU (slow server core, the only machine available to me). The M2 should be noticeably faster; CI prints the Windows/macOS numbers in `cpu_bench.log` on every push.
 
-| | Eco | Standard | High |
+| 48 kHz, block 256 | Eco | Standard | High |
 |---|---|---|---|
-| 48 kHz | 5.5 % | 8.4 % | 9.7 % |
-| 96 kHz | — | 15–16 % | — |
+| Linux cloud vCPU (local) | 5.5 % | 8.4 % | 9.7 % |
+| GitHub Windows runner (CI) | 4.0 % | 5.7 % | 9.1 % |
+| GitHub macOS runner (CI, virtualised) | 8.2 % | 8.4 % | 13.7 % |
+
+CI status of the first build (run 43830131508): DSP tests 20/20, host smoke passed, **pluginval strictness 7 SUCCESS** on Windows and macOS, **auval: AU VALIDATION SUCCEEDED**.
 
 Main cost: the Vintage voice at the oversampled rate (about 50 %). Next optimisation steps, in order: SIMD (process the mid and high bands together as one 2-lane vector), float precision inside the voices, and the Eco mode default when tracking. **Not done yet.**
 
