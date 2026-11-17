@@ -1,11 +1,11 @@
 # BASSFORGE
 
-Hybrid multiband bass processing and mixing plug-in: a three-band Drive engine (Vintage / Drive / Modern),
-a clean DI channel with a FET-style compressor, a procedural cabinet with two virtual microphones, a
+Hybrid multiband bass processing and mixing plug-in: a three-band Drive engine (Drive / Fuzz / Modern),
+a clean DI channel with a FET- or opto-style compressor, a procedural cabinet with two virtual microphones, a
 7-band Drive EQ, a studio room return, and a persistent mixer with Mix EQ, an optical leveller and
 true-peak protection.
 
-**Status: v0.1.0, experimental.** It builds, passes automated DSP and host tests, and has a complete
+**Status: v0.2.0, experimental.** It builds, passes automated DSP and host tests, and has a complete
 UI. It still needs listening tests with real basses and a check in Cubase and LUNA. See
 [`docs/M0_architecture.md`](docs/M0_architecture.md) for what is measured, what is decided and what is
 still open.

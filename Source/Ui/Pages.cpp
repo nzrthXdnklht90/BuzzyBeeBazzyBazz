@@ -46,7 +46,7 @@ static void placeRow (std::initializer_list<juce::Component*> comps, juce::Recta
 // ============================================================================ TONE
 TonePage::TonePage (BassForgeProcessor& p, juce::ValueTree u)
     : proc (p), s (p.apvts), ui (std::move (u)),
-      drvOn (s, "drv_on", col::drive), model (s, "drv_model", col::drive, { "VINTAGE", "DRIVE", "MODERN" }),
+      drvOn (s, "drv_on", col::drive), model (s, "drv_model", col::drive, { "DRIVE", "FUZZ", "MODERN" }),
       drvDrive (s, "drv_drive", col::drive, Knob::Size::Large), drvChar (s, "drv_char", col::drive, Knob::Size::Large),
       drvOut (s, "drv_out", col::drive, Knob::Size::Large, "OUTPUT"),
       xLow (s, "drv_xlow", col::drive, Knob::Size::Small), xHigh (s, "drv_xhigh", col::drive, Knob::Size::Small),
@@ -54,6 +54,8 @@ TonePage::TonePage (BassForgeProcessor& p, juce::ValueTree u)
       lowComp (s, "drv_lowcomp", col::drive, Knob::Size::Small), lowLvl (s, "drv_lowlvl", col::drive, Knob::Size::Small),
       midLvl (s, "drv_midlvl", col::drive, Knob::Size::Small), highLvl (s, "drv_highlvl", col::drive, Knob::Size::Small),
       lowMode (s, "drv_lowmode", col::drive),
+      fzMids (s, "fz_mids", col::drive, Knob::Size::Small, "MIDS"), fzGrit (s, "fz_grit", col::drive, Knob::Size::Small, "GRIT"),
+      fzClip (s, "fz_clip", col::drive, Knob::Size::Small, "CLIP"), compStyle (s, "di_comp_style", col::di, { "FET", "OPTO" }),
       compOn (s, "di_comp_on", col::di), eqOn (s, "di_eq_on", col::di),
       comp (s, "di_comp", col::di, Knob::Size::Large), compOut (s, "di_comp_out", col::di, Knob::Size::Medium, "OUTPUT"),
       bass (s, "di_bass", col::di), mid (s, "di_mid", col::di), treble (s, "di_treble", col::di),
@@ -64,7 +66,7 @@ TonePage::TonePage (BassForgeProcessor& p, juce::ValueTree u)
     addAndMakeVisible (drive);
     addAndMakeVisible (di);
     for (juce::Component* c : std::initializer_list<juce::Component*> { &drvOn, &model, &drvAdv, &drvDrive, &drvChar, &drvOut, &xLow, &xHigh, &midDrive, &highDrive,
-                                &lowComp, &lowLvl, &midLvl, &highLvl, &lowMode, &lowModeCaption, &charHint, &lowGr,
+                                &lowComp, &lowLvl, &midLvl, &highLvl, &lowMode, &lowModeCaption, &charHint, &lowGr, &fzMids, &fzGrit, &fzClip, &compStyle,
                                 &compOn, &eqOn, &comp, &compOut, &bass, &mid, &treble, &bassF, &midF, &midQ, &trebF, &compGr, &compTitle, &eqTitle, &diAdv })
         addAndMakeVisible (c);
     lowModeCaption.setText ("LOW END", juce::dontSendNotification);
@@ -113,7 +115,15 @@ void TonePage::resized()
         auto main = adv ? c.removeFromLeft ((int) (c.getWidth() * 0.46f)) : c;
         auto hint = main.removeFromBottom (18);
         charHint.setBounds (hint);
-        const int kw = adv ? std::min (118, main.getWidth() / 3) : std::min (150, main.getWidth() / 4);
+        const bool fuzz = (int) std::lround (s.getRawParameterValue ("drv_model")->load()) == 1;
+        for (auto* k : { &fzMids, &fzGrit, &fzClip }) k->setVisible (fuzz);
+        if (fuzz)
+        {
+            // the fuzz pedal's own front-panel controls sit under the main knobs
+            auto row = main.removeFromBottom (std::min (78, main.getHeight() / 3));
+            placeRow ({ &fzMids, &fzGrit, &fzClip }, row.withSizeKeepingCentre (std::min (row.getWidth(), adv ? row.getWidth() : 420), row.getHeight()), 72);
+        }
+        const int kw = std::min (adv ? 118 : (fuzz ? 120 : 150), std::min (main.getWidth() / (adv ? 3 : 4), main.getHeight() - 40));
         placeRow ({ &drvDrive, &drvChar, &drvOut }, main.withSizeKeepingCentre (adv ? main.getWidth() : std::min (main.getWidth(), 620), std::min (main.getHeight(), kw + 40)), kw);
         if (adv)
         {
@@ -137,6 +147,7 @@ void TonePage::resized()
         c.removeFromLeft (16);
         auto lh = left.removeFromTop (24);
         compOn.setBounds (lh.removeFromLeft (24));
+        compStyle.setBounds (lh.removeFromRight (110).reduced (0, 1));
         compTitle.setBounds (lh.withTrimmedLeft (6));
         compGr.setBounds (left.removeFromBottom (18).reduced (10, 0));
         left.removeFromBottom (6);
@@ -163,17 +174,23 @@ void TonePage::tick()
     if (m != lastModel)
     {
         lastModel = m;
-        static const char* hints[] = { "Character: dark and fat  <->  bright growl", "Character: smooth  <->  more presence",
+        static const char* hints[] = { "Character: smooth  <->  more presence", "Drive = fuzz amount   |   Character = tone: dark  <->  bright",
                                        "Character: more weight  <->  more bite" };
         static const char* tips[] = {
-            "Character (Vintage): turn down for a darker, fatter amp; turn up for a brighter, growlier one.",
             "Character (Drive): adds presence. Low is smooth and round, high is crisp and cutting.",
+            "Character (Fuzz): the fuzz tone control. Low is dark and woolly, high is bright and buzzy.",
             "Character (Modern): low adds weight going into the distortion, high adds bite and pick attack." };
-        static const char* subs[] = { "warm valve-amp breakup", "flexible overdrive and saturation", "tight, aggressive distortion" };
+        static const char* subs[] = { "flexible overdrive and saturation", "huge, thick fuzz (clean lows stay underneath)", "tight, aggressive distortion" };
+        static const char* driveTips[] = {
+            "Drive: how much dirt. Low = warm and round, high = gritty and aggressive. The volume stays about the same.",
+            "Drive (Fuzz): how much fuzz and sustain. Low is a rough, splatty fuzz; high is a thick wall with long sustain.",
+            "Drive: how much dirt. Low = warm and round, high = gritty and aggressive. The volume stays about the same." };
+        drvDrive.slider.setTooltip (driveTips[juce::jlimit (0, 2, m)]);
         charHint.setText (hints[juce::jlimit (0, 2, m)], juce::dontSendNotification);
         drvChar.slider.setTooltip (tips[juce::jlimit (0, 2, m)]);
         drive.subtitle = subs[juce::jlimit (0, 2, m)];
         drive.repaint();
+        resized();   // show / hide the fuzz controls
     }
     auto& mt = proc.meters();
     compGr.push (mt.diCompGr.load());

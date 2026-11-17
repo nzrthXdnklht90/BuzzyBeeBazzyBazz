@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(BassForge VERSION 0.1.0 LANGUAGES C CXX)
+project(BassForge VERSION 0.2.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -17,6 +17,7 @@ add_library(bassforge_dsp STATIC
   Source/Dsp/LookaheadEnvelope.cpp
   Source/Dsp/TruePeakGuard.cpp
   Source/Dsp/DriveVoices.cpp
+  Source/Dsp/FuzzVoice.cpp
   Source/Dsp/Dynamics.cpp
   Source/Dsp/Cabinet.cpp
   Source/Dsp/Eq.cpp
@@ -39,6 +40,9 @@ if(BASSFORGE_BUILD_TESTS)
   add_executable(bf_render tools/bf_render.cpp)
   target_include_directories(bf_render PRIVATE tools)
   target_link_libraries(bf_render PRIVATE bassforge_dsp)
+
+  add_executable(bf_fuzz_fit tools/fuzz_fit/FuzzFit.cpp)
+  target_link_libraries(bf_fuzz_fit PRIVATE bassforge_dsp)
 
   add_executable(bf_bench tools/bf_bench.cpp)
   target_link_libraries(bf_bench PRIVATE bassforge_dsp)

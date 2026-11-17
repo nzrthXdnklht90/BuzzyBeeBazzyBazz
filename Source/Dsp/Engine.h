@@ -74,6 +74,8 @@ private:
     LR4 xLow, xHigh;
     SvfCoeffs apC, apLoC; Svf ap, diAp1, diAp2;   // diAp*: DI phase-matched to the crossover (LR4 bands are in phase with AP_lo * AP_hi)
     LowBandCompressor lowComp;
+    Fade fFuzz;                // FUZZ routing: one fuzz across mid + high (like a real pedal), low band stays clean
+    SvfCoeffs fuzzShelfC; Svf fuzzShelf; double fuzzHighPre = 1.0;   // in Fuzz mode High Level = post-fuzz shelf above the High Split
     OversamplerChannel osMid[3], osHigh[3];
     int osLatency[3] {}, osPadTop[3] {};
     DelayLine padMid, padHigh;
@@ -84,6 +86,8 @@ private:
 
     // other blocks
     FetCompressor fet;
+    OptoLeveller diOptoComp;   // DI compressor 'Opto' style (feedback optical cell)
+    Fade fDiStyle;
     DiEq diEq;
     Cabinet cab;
     ParametricEq7 peq;

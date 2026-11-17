@@ -1,6 +1,6 @@
 // bf_render: offline render through the BASSFORGE engine (for listening tests and A/B work).
 // usage: bf_render in.wav out.wav [key=value ...]
-//   keys: model=vintage|drive|modern drive=0..1 character=0..1 cab=0..3 quality=0..2 input=dB
+//   keys: model=drive|fuzz|modern drive=0..1 character=0..1 cab=0..3 quality=0..2 input=dB
 //         di=dB drivefader=dB room=dB roomtype=0..2 own=0..2 mic1=0..2 mic1pos=0..1 mic1dist=0..6
 //         synth=1 (ignore in.wav, render the built-in test phrase at 48 kHz)
 #include "Engine.h"
@@ -22,7 +22,7 @@ int main (int argc, char** argv)
         if (eq == std::string::npos) continue;
         const std::string k = a.substr (0, eq), v = a.substr (eq + 1);
         const double d = std::atof (v.c_str());
-        if (k == "model") p.model = v == "modern" ? DriveModel::Modern : v == "drive" ? DriveModel::Drive : DriveModel::Vintage;
+        if (k == "model") p.model = v == "modern" ? DriveModel::Modern : v == "fuzz" ? DriveModel::Fuzz : DriveModel::Drive;
         else if (k == "drive") p.drive = d;
         else if (k == "character") p.character = d;
         else if (k == "cab") p.cab = (CabModel) (int) d;

@@ -277,3 +277,19 @@ BF_TEST ("ENG-STRESS", "random automation of every parameter, every block, for 2
     BF_CHECK (gainToDb (pk) <= -0.95);
     BF_CHECK (e.meters().nonFiniteResets.load() == 0);
 }
+
+BF_TEST ("ENG-DISTYLE", "DI compressor FET and OPTO styles are level-matched and both compress; switching is click-free")
+{
+    const auto x = bassPhrase (kFs, 2.0);
+    auto run = [&] (bool opto, double comp) {
+        EngineParams p = neutralParams(); p.muteDrive = true; p.muteRoom = true; p.diCompOn = true; p.diComp = comp; p.diOpto = opto;
+        auto& e = sharedEngine (p); auto o = runEngine (e, x);
+        return gainToDb (rms (o.l, (size_t) kFs / 2));
+    };
+    for (double comp : { 0.35, 0.7 })
+    {
+        const double f = run (false, comp), o = run (true, comp);
+        note (fmt ("Compression %.2f: FET %+.1f dB, OPTO %+.1f dB", comp, f, o));
+        BF_CHECK (std::abs (f - o) < 1.5);
+    }
+}

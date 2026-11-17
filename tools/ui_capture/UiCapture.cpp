@@ -58,12 +58,13 @@ int main (int argc, char** argv)
     {
         auto ed = make(); ed->setVisible (true);
         shot (*ed, p, dir, "01_tone_default");
-        p.presets.load ("Modern Tight");
+        p.presets.load ("Fuzz Wall");
+        if (auto* cs = p.apvts.getParameter ("di_comp_style")) cs->setValueNotifyingHost (1.0f);
         p.uiState.setProperty ("drvAdv", true, nullptr); p.uiState.setProperty ("diAdv", true, nullptr);
     }
     {
         auto ed = make(); ed->setVisible (true);
-        shot (*ed, p, dir, "02_tone_advanced_modern");
+        shot (*ed, p, dir, "02_tone_advanced_fuzz");
         p.uiState.setProperty ("page", 1, nullptr);
     }
     {

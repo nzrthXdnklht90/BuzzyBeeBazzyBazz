@@ -1,0 +1,89 @@
+84 reference cases
+start objective 5.212
+  c0 amp 0.05 sine220                level  -0.20 dB   shape  2.29 dB
+  c0 amp 0.05 bass                   level  -0.51 dB   shape  1.62 dB
+  c0 amp 0.3 sine220                 level  +0.15 dB   shape  1.08 dB
+  c0 amp 0.3 bass                    level  -2.02 dB   shape  2.04 dB
+  c0 amp 1.0 sine220                 level  +0.44 dB   shape  1.18 dB
+  c0 amp 1.0 bass                    level  -0.02 dB   shape  5.00 dB
+  c0 small-signal noise              level  +0.50 dB   shape  0.40 dB
+  c1 amp 0.05 sine220                level  -0.07 dB   shape  1.76 dB
+  c1 amp 0.05 bass                   level  +0.22 dB   shape  0.73 dB
+  c1 amp 0.3 sine220                 level  -0.30 dB   shape  1.47 dB
+  c1 amp 0.3 bass                    level  -2.73 dB   shape  1.95 dB
+  c1 amp 1.0 sine220                 level  +0.25 dB   shape  1.77 dB
+  c1 amp 1.0 bass                    level  -1.07 dB   shape  2.35 dB
+  c1 small-signal noise              level  +0.21 dB   shape  0.48 dB
+  c2 amp 0.05 sine220                level  -0.32 dB   shape  2.21 dB
+  c2 amp 0.05 bass                   level  -2.56 dB   shape  1.27 dB
+  c2 amp 0.3 sine220                 level  +0.90 dB   shape  1.85 dB
+  c2 amp 0.3 bass                    level  +0.20 dB   shape  3.74 dB
+  c2 amp 1.0 sine220                 level  +0.76 dB   shape  2.67 dB
+  c2 amp 1.0 bass                    level  +1.06 dB   shape  2.96 dB
+  c2 small-signal noise              level  +0.63 dB   shape  0.30 dB
+  c3 amp 0.05 sine220                level  +0.01 dB   shape  2.46 dB
+  c3 amp 0.05 bass                   level  -1.69 dB   shape  1.57 dB
+  c3 amp 0.3 sine220                 level  +0.61 dB   shape  3.74 dB
+  c3 amp 0.3 bass                    level  -0.63 dB   shape  3.61 dB
+  c3 amp 1.0 sine220                 level  +0.65 dB   shape  2.47 dB
+  c3 amp 1.0 bass                    level  +0.69 dB   shape  4.11 dB
+  c3 small-signal noise              level  +0.04 dB   shape  0.35 dB
+  c4 amp 0.05 sine220                level  +0.40 dB   shape  2.26 dB
+  c4 amp 0.05 bass                   level  -1.41 dB   shape  1.65 dB
+  c4 amp 0.3 sine220                 level  +1.17 dB   shape  2.79 dB
+  c4 amp 0.3 bass                    level  -1.47 dB   shape  3.00 dB
+  c4 amp 1.0 sine220                 level  +1.72 dB   shape  1.34 dB
+  c4 amp 1.0 bass                    level  +0.06 dB   shape  4.65 dB
+  c4 small-signal noise              level  +0.45 dB   shape  0.40 dB
+  c5 amp 0.05 sine220                level  +1.15 dB   shape  2.96 dB
+  c5 amp 0.05 bass                   level  -0.72 dB   shape  2.06 dB
+  c5 amp 0.3 sine220                 level  +2.00 dB   shape  3.72 dB
+  c5 amp 0.3 bass                    level  -1.85 dB   shape  3.65 dB
+  c5 amp 1.0 sine220                 level  +2.44 dB   shape  2.98 dB
+  c5 amp 1.0 bass                    level  +0.17 dB   shape  2.90 dB
+  c5 small-signal noise              level  +0.28 dB   shape  1.50 dB
+  c6 amp 0.05 sine220                level  -0.77 dB   shape  2.24 dB
+  c6 amp 0.05 bass                   level  -1.18 dB   shape  1.61 dB
+  c6 amp 0.3 sine220                 level  -0.20 dB   shape  0.59 dB
+  c6 amp 0.3 bass                    level  -1.28 dB   shape  1.69 dB
+  c6 amp 1.0 sine220                 level  +0.25 dB   shape  1.32 dB
+  c6 amp 1.0 bass                    level  +0.54 dB   shape  4.20 dB
+  c6 small-signal noise              level  +0.53 dB   shape  0.35 dB
+  c7 amp 0.05 sine220                level  +0.91 dB   shape  1.87 dB
+  c7 amp 0.05 bass                   level  +1.22 dB   shape  2.03 dB
+  c7 amp 0.3 sine220                 level  +0.48 dB   shape  1.67 dB
+  c7 amp 0.3 bass                    level  -1.37 dB   shape  2.40 dB
+  c7 amp 1.0 sine220                 level  +0.36 dB   shape  2.37 dB
+  c7 amp 1.0 bass                    level  -0.06 dB   shape  4.42 dB
+  c7 small-signal noise              level  +0.55 dB   shape  0.38 dB
+  c8 amp 0.05 sine220                level  +0.25 dB   shape  6.42 dB
+  c8 amp 0.05 bass                   level  -3.05 dB   shape  2.35 dB
+  c8 amp 0.3 sine220                 level  +0.90 dB   shape  2.54 dB
+  c8 amp 0.3 bass                    level  -0.29 dB   shape  2.08 dB
+  c8 amp 1.0 sine220                 level  +1.30 dB   shape  5.44 dB
+  c8 amp 1.0 bass                    level  +0.68 dB   shape  3.50 dB
+  c8 small-signal noise              level  +0.54 dB   shape  0.44 dB
+  c9 amp 0.05 sine220                level  -0.23 dB   shape  0.88 dB
+  c9 amp 0.05 bass                   level  +0.07 dB   shape  0.43 dB
+  c9 amp 0.3 sine220                 level  -0.73 dB   shape  1.37 dB
+  c9 amp 0.3 bass                    level  -1.33 dB   shape  2.21 dB
+  c9 amp 1.0 sine220                 level  -1.89 dB   shape  2.04 dB
+  c9 amp 1.0 bass                    level  -1.95 dB   shape  3.39 dB
+  c9 small-signal noise              level  +0.52 dB   shape  0.39 dB
+  c10 amp 0.05 sine220               level  -1.46 dB   shape  1.30 dB
+  c10 amp 0.05 bass                  level  -3.19 dB   shape  1.82 dB
+  c10 amp 0.3 sine220                level  -1.16 dB   shape  1.49 dB
+  c10 amp 0.3 bass                   level  -3.27 dB   shape  3.84 dB
+  c10 amp 1.0 sine220                level  -1.01 dB   shape  1.19 dB
+  c10 amp 1.0 bass                   level  -1.41 dB   shape  3.20 dB
+  c10 small-signal noise             level  +0.30 dB   shape  0.49 dB
+  c11 amp 0.05 sine220               level  +1.55 dB   shape  5.70 dB
+  c11 amp 0.05 bass                  level  -0.81 dB   shape  3.99 dB
+  c11 amp 0.3 sine220                level  +1.84 dB   shape  5.19 dB
+  c11 amp 0.3 bass                   level  +1.01 dB   shape  3.95 dB
+  c11 amp 1.0 sine220                level  +1.93 dB   shape  4.81 dB
+  c11 amp 1.0 bass                   level  +1.68 dB   shape  2.55 dB
+  c11 small-signal noise             level  +0.69 dB   shape  0.61 dB
+  mean |level| 0.95 dB (max 3.27), mean shape 2.31 dB (max 6.42)
+final objective 5.2117
+fit: aol 21.920 vPos 7.148 vNeg 1.864 q4Gain 6.704 q4Pos 3.227 q4Neg 5.931 toneSrc 3618.7 rpi 1461993

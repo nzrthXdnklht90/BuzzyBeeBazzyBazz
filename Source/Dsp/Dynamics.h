@@ -81,6 +81,8 @@ public:
         previous output via processFrame). */
     void processFrame (double& l, double& r) noexcept;
     double getGrDb() const noexcept { return grDb; }
+    double sideGainDb = 0.0;   // extra detector gain (the DI uses this to match the FET style's range)
+    double extraMakeupDb = 0.0; // extra make-up (the DI uses this to level-match the FET style)
 
 private:
     double fs = 48000.0, amount = 0.2, light = 0.0, cellFast = 0.0, cellSlow = 0.0, lastOut = 0.0, grDb = 0.0;

@@ -110,6 +110,16 @@ void BassForgeProcessor::setStateInformation (const void* data, int size)
             uiState.copyPropertiesFrom (ui, nullptr);
             tree.removeChild (ui, nullptr);
         }
+        // v0.1 -> v0.2: the voice list changed from Vintage|Drive|Modern to Drive|Fuzz|Modern.
+        // Old Vintage and Drive sessions both open on Drive (the nearest voice); Modern stays Modern.
+        const auto ver = tree.getProperty ("version", "0.1.0").toString();
+        if (ver.isEmpty() || ver.compareNatural ("0.2.0") < 0)
+            for (auto child : tree)
+                if (child.hasType ("PARAM") && child.getProperty ("id").toString() == "drv_model")
+                {
+                    const int old = (int) std::lround ((double) child.getProperty ("value"));
+                    child.setProperty ("value", old == 2 ? 2 : 0, nullptr);
+                }
         presets.setCurrentName (tree.getProperty ("preset", "Default").toString());
         apvts.replaceState (tree);
     }

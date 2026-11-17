@@ -1,4 +1,4 @@
-// BASSFORGE - the three Drive characters (VINTAGE / DRIVE / MODERN), run at the oversampled rate.
+// BASSFORGE - the three Drive characters (DRIVE / FUZZ / MODERN), run at the oversampled rate.
 // Copyright (c) 2026 Nazareth. Original grey-box DSP: the structures follow the published signal flow
 // of the reference circuit families (cascaded valve stages with bias shift and supply sag; a
 // pre/de-emphasis soft-clipping preamp; pre-distortion low/high emphasis into a hard op-amp-style
@@ -8,6 +8,7 @@
 
 #include "Filters.h"
 #include "EngineParams.h"
+#include "FuzzVoice.h"
 #include <array>
 
 namespace bassforge
@@ -20,6 +21,7 @@ struct VoiceSetup
     double offsetDb = 0.0;    // band drive offset (Mid Drive / High Drive)
     double character = 0.5;   // 0..1
     BandRole role = BandRole::Mid;
+    double fuzzMids = 0.5, fuzzGrit = 0.5, fuzzClip = 1.0;
 };
 
 /** Envelope follower (|x|) with separate attack/release time constants. */
@@ -43,24 +45,6 @@ public:
 
 private:
     double aA = 0.0, aR = 0.0, e = 0.0;
-};
-
-/** VINTAGE: two asymmetric valve-like stages, level-dependent bias shift (grid "blocking"), interstage
-    coupling/Miller filtering, a character-controlled tone stack, a soft push-pull power stage and
-    slow supply sag. */
-class VintageVoice
-{
-public:
-    void prepare (double fs);
-    void reset() noexcept;
-    void setup (const VoiceSetup& s) noexcept;
-    void process (double* buf, int n) noexcept;
-
-private:
-    double fs = 192000.0, preGain = 1.0, sagAmt = 0.0, postLpHz = 6000.0;
-    OnePole couple1, couple2, miller, postLp, dcOut;
-    EnvFollower env1, supply;
-    SvfCoeffs bassC, midC, trebC; Svf bass, mid, treb;
 };
 
 /** DRIVE: presence pre-emphasis into a soft, slightly asymmetric clipping preamp, a second soft stage
@@ -117,9 +101,11 @@ private:
     void measure (BandRole role);
     void runModel (DriveModel m, double* buf, int n) noexcept;
     void setupModel (DriveModel m, const VoiceSetup& s) noexcept;
+    void setupFuzz (const VoiceSetup& s) noexcept;
+    double fuzzInGain = 1.0;
 
-    VintageVoice vintage; SansVoice sans; ModernVoice modern;
-    DriveModel current = DriveModel::Vintage, previous = DriveModel::Vintage;
+    SansVoice sans; FuzzVoice fuzz; ModernVoice modern;
+    DriveModel current = DriveModel::Drive, previous = DriveModel::Drive;
     VoiceSetup lastSetup;
     double fadePos = 1.0, fadeStep = 0.001;
     double osRate = 192000.0;

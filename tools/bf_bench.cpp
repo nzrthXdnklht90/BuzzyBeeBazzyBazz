@@ -29,5 +29,21 @@ int main()
                 std::printf ("fs %6.0f  quality %-8s  block %4d : %5.2f%% of one core (realtime x%.0f), latency %d samples\n", fs,
                              q == 0 ? "Eco" : q == 1 ? "Standard" : "High", block, 100.0 * sec / seconds, seconds / sec, e.getLatencySamples());
             }
+    // per-voice cost (48 kHz, Standard, block 256)
+    for (int m = 0; m < 3; ++m)
+    {
+        EngineParams p; p.model = (DriveModel) m; p.mic[1].on = true;
+        Engine e; e.setParams (p); e.prepare (48000.0, 256);
+        std::vector<float> in (256), l (256), r (256); double phase = 0;
+        const auto t0 = std::chrono::steady_clock::now();
+        for (int b = 0; b < 48000 * 10 / 256; ++b)
+        {
+            for (auto& v : in) { v = (float) (0.25 * std::sin (phase)); phase += 2 * kPi * 55 / 48000.0; }
+            const float* ip[1] = { in.data() }; float* op[2] = { l.data(), r.data() };
+            e.process (ip, 1, op, 2, 256);
+        }
+        const double sec = std::chrono::duration<double> (std::chrono::steady_clock::now() - t0).count();
+        std::printf ("voice %-6s (48 kHz, Standard, 256): %5.2f%% of one core\n", m == 0 ? "Drive" : m == 1 ? "Fuzz" : "Modern", 100.0 * sec / 10.0);
+    }
     return 0;
 }

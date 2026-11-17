@@ -15,9 +15,8 @@ inline double ftanh (double x) noexcept
     const double y = x * (135135.0 + x2 * (17325.0 + x2 * (378.0 + x2))) / (135135.0 + x2 * (62370.0 + x2 * (3150.0 + 28.0 * x2)));
     return std::clamp (y, -1.0, 1.0);
 }
-inline double asymTanh (double x, double bias) noexcept { return ftanh (x + bias) - ftanh (bias); }
 inline double asymTanhK (double x, double bias, double tanhBias) noexcept { return ftanh (x + bias) - tanhBias; }
-const double kTanhM02 = std::tanh (-0.2), kTanhP01 = std::tanh (0.1);
+const double kTanhP01 = std::tanh (0.1);
 /** Smooth-but-hard clipper: x / (1 + |x|^p)^(1/p), p = 3. */
 inline double hardSoft (double x) noexcept
 {
@@ -26,55 +25,6 @@ inline double hardSoft (double x) noexcept
 }
 inline double lerp (double a, double b, double t) noexcept { return a + (b - a) * t; }
 } // namespace
-
-// ============================================================================ VINTAGE
-void VintageVoice::prepare (double rate)
-{
-    fs = rate;
-    couple1.setCutoff (25.0, fs);
-    couple2.setCutoff (12.0, fs);
-    miller.setCutoff (7500.0, fs);
-    dcOut.setCutoff (8.0, fs);
-    env1.set (2.0, 45.0, fs);         // TUNABLE: grid-current bias shift timing
-    supply.set (25.0, 180.0, fs);     // TUNABLE: supply sag timing
-    reset();
-}
-
-void VintageVoice::reset() noexcept
-{
-    couple1.reset(); couple2.reset(); miller.reset(); postLp.reset(); dcOut.reset();
-    env1.reset(); supply.reset(); bass.reset(); mid.reset(); treb.reset();
-}
-
-void VintageVoice::setup (const VoiceSetup& s) noexcept
-{
-    preGain = dbToGain (6.0 + 36.0 * s.drive + s.offsetDb);
-    sagAmt = 0.15 + 0.35 * s.drive;
-    const double c = s.character; // 0 = dark/fat, 1 = bright/growl
-    bassC.makeLowShelf (SvfCoeffs::prewarp (110.0, fs), lerp (3.5, -1.5, c));
-    midC.makeBell (SvfCoeffs::prewarp (500.0, fs), lerp (-1.0, -4.0, c * c), 0.7); // tone-stack mid scoop
-    trebC.makeHighShelf (SvfCoeffs::prewarp (2400.0, fs), lerp (-5.0, 4.5, c));
-    postLpHz = s.role == BandRole::High ? 5500.0 : 9000.0;
-    postLp.setCutoff (postLpHz, fs);
-}
-
-void VintageVoice::process (double* buf, int n) noexcept
-{
-    for (int i = 0; i < n; ++i)
-    {
-        const double g = preGain / (1.0 + sagAmt * supply.value());
-        const double u = g * couple1.hp (buf[i]);
-        const double e = env1.process (u);
-        const double b1 = 0.35 - 0.25 * std::min (e, 2.0);      // bias walks with level -> dynamic asymmetry
-        double y = asymTanh (u, b1);
-        y = couple2.hp (miller.lp (y));                           // coupling cap removes the shifted DC ("blocking")
-        y = asymTanhK (1.8 * y, -0.2, kTanhM02);                              // second stage, opposite asymmetry
-        y = treb.process (mid.process (bass.process (y, bassC), midC), trebC);
-        y = ftanh (0.9 * y) * (1.0 / 0.9);                    // push-pull power stage: symmetric, soft
-        supply.process (y);
-        buf[i] = dcOut.hp (postLp.lp (y));
-    }
-}
 
 // ============================================================================ DRIVE (SansAmp-inspired)
 void SansVoice::prepare (double rate)
@@ -151,7 +101,7 @@ void ModernVoice::process (double* buf, int n) noexcept
 void DriveVoiceBank::prepare (double rate, int maxBlockOs)
 {
     osRate = rate;
-    vintage.prepare (rate); sans.prepare (rate); modern.prepare (rate);
+    sans.prepare (rate); fuzz.prepare (rate); modern.prepare (rate);
     scratch.assign ((size_t) std::max (1, maxBlockOs), 0.0);
     fadeStep = 1.0 / (0.020 * rate); // 20 ms model crossfade
     compGainCur.setRampLength ((int) (0.010 * rate));
@@ -164,21 +114,34 @@ void DriveVoiceBank::prepare (double rate, int maxBlockOs)
 void DriveVoiceBank::setRate (double rate) noexcept
 {
     osRate = rate;
-    vintage.prepare (rate); sans.prepare (rate); modern.prepare (rate);
+    sans.prepare (rate); fuzz.prepare (rate); modern.prepare (rate);
     fadeStep = 1.0 / (0.020 * rate);
     compGainCur.setRampLength ((int) (0.010 * rate));
     compGainPrev.setRampLength ((int) (0.010 * rate));
     fadePos = 1.0;
 }
 
-void DriveVoiceBank::reset() noexcept { vintage.reset(); sans.reset(); modern.reset(); fadePos = 1.0; }
+void DriveVoiceBank::reset() noexcept { sans.reset(); fuzz.reset(); modern.reset(); fadePos = 1.0; }
+
+void DriveVoiceBank::setupFuzz (const VoiceSetup& s) noexcept
+{
+    // Drive macro -> Sustain (with the Mid Drive offset as extra input gain), Character -> Filter (Tone)
+    FuzzControls c;
+    c.sustain = std::clamp (0.04 + 0.96 * s.drive, 0.0, 1.0);
+    c.filter = std::clamp (s.character, 0.0, 1.0);
+    c.scoop = std::clamp (s.fuzzMids, 0.0, 1.0);
+    c.crunch = std::clamp (s.fuzzGrit, 0.0, 1.0);
+    c.clip = std::clamp (s.fuzzClip, 0.0, 1.0);
+    fuzz.setControls (c);
+    fuzzInGain = dbToGain (s.offsetDb);
+}
 
 void DriveVoiceBank::setupModel (DriveModel m, const VoiceSetup& s) noexcept
 {
     switch (m)
     {
-        case DriveModel::Vintage: vintage.setup (s); break;
         case DriveModel::Drive:   sans.setup (s); break;
+        case DriveModel::Fuzz:    setupFuzz (s); break;
         case DriveModel::Modern:  modern.setup (s); break;
     }
 }
@@ -187,8 +150,9 @@ void DriveVoiceBank::runModel (DriveModel m, double* buf, int n) noexcept
 {
     switch (m)
     {
-        case DriveModel::Vintage: vintage.process (buf, n); break;
         case DriveModel::Drive:   sans.process (buf, n); break;
+        case DriveModel::Fuzz:    if (fuzzInGain != 1.0) for (int i = 0; i < n; ++i) buf[i] *= fuzzInGain;
+                                  fuzz.process (buf, n); break;
         case DriveModel::Modern:  modern.process (buf, n); break;
     }
 }
@@ -216,8 +180,8 @@ void DriveVoiceBank::setup (DriveModel m, const VoiceSetup& s) noexcept
         // fresh state for the incoming voice so the crossfade starts from silence-consistent filters
         switch (m)
         {
-            case DriveModel::Vintage: vintage.reset(); break;
             case DriveModel::Drive:   sans.reset(); break;
+            case DriveModel::Fuzz:    fuzz.reset(); break;
             case DriveModel::Modern:  modern.reset(); break;
         }
         compGainPrev.snapTo (compGainCur.getCurrent());
@@ -277,7 +241,7 @@ void DriveVoiceBank::measure (BandRole role)
     // Model changes are loudness-neutral at the nominal playing level (brief section 19).
     // Signal: a bass-like note (band-limited saw, A1 = 55 Hz, -12 dBFS peak) split by the default
     // crossover, so each band is calibrated on the kind of content it really receives.
-    const int warm = (int) (0.03 * osRate), len = (int) (0.10 * osRate);
+    const int warm = (int) (0.01 * osRate), len = (int) (0.24 * osRate);
     std::vector<double> src ((size_t) (warm + len)), sig ((size_t) (warm + len));
     {
         LR4 a, b; a.setFreq (140.0, osRate); b.setFreq (850.0, osRate);
@@ -294,7 +258,9 @@ void DriveVoiceBank::measure (BandRole role)
             peakV = std::max (peakV, std::abs (s));
             src[(size_t) i] = s;
         }
-        for (auto& v : src) v *= 0.25 / peakV;
+        // decaying pluck (like a real note): heavier distortion holds the level up for longer, and the
+        // compensation has to account for that, not just the steady-state level
+        for (size_t i = 0; i < src.size(); ++i) src[i] *= 0.25 / peakV * std::exp (-4.0 * (double) i / osRate);
         for (auto& v : src)
         {
             double lo, rest, mid, hi;
@@ -313,8 +279,8 @@ void DriveVoiceBank::measure (BandRole role)
                 const auto model = (DriveModel) m;
                 switch (model)
                 {
-                    case DriveModel::Vintage: vintage.reset(); break;
                     case DriveModel::Drive:   sans.reset(); break;
+                    case DriveModel::Fuzz:    fuzz.reset(); break;
                     case DriveModel::Modern:  modern.reset(); break;
                 }
                 setupModel (model, s);

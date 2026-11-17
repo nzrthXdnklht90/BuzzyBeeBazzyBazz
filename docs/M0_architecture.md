@@ -1,6 +1,7 @@
 # BASSFORGE — Milestone 0: engineering architecture, decisions and risks
 
 Status: **Milestone 0 complete, and a working first build that covers Milestones 1–7 at prototype level** (16 Nov 2026).
+**v0.2 (17 Nov 2026):** the VINTAGE voice was replaced by a FUZZ voice at your request (see `fuzz_voice_report.md`), and the DI compressor gained an OPTO style (see `study_electric_toad.md`). The sections below describe v0.1 unless they say otherwise.
 Everything in this document is either *measured* (with the test that measures it), *decided* (with the reason), or *open* (with what closes it).
 
 Release label: **experimental**. The plug-in builds, loads through the VST3 hosting path, passes 20 headless DSP tests and a host smoke test, and has a complete UI. It has **not** been listened to with real basses, calibrated against hardware, or tested in Cubase yet (see section 9).

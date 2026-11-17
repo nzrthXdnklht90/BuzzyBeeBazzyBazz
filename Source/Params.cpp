@@ -14,7 +14,7 @@ std::vector<Def> makeDefs()
 
         // ---------------------------------------------------------------- DRIVE
         { "drv_on", "Drive On", K::Bool, 0, 1, 1, 0, "", nullptr, "Turns the amp/distortion on or off. When off, your clean bass still goes through the cabinet." },
-        { "drv_model", "Amp Voice", K::Choice, 0, 2, 0, 0, "", "Vintage|Drive|Modern", "Amp voice: Vintage is warm valve-amp growl, Drive is a flexible overdrive, Modern is tight and aggressive." },
+        { "drv_model", "Amp Voice", K::Choice, 0, 2, 0, 0, "", "Drive|Fuzz|Modern", "Voice: Drive is a flexible warm overdrive, Fuzz is a huge, thick fuzz pedal, Modern is tight and aggressive distortion." },
         { "drv_drive", "Drive", K::Float, 0, 10, 4, 0, "", nullptr, "Drive: how much dirt. Low = warm and round, high = gritty and aggressive. The volume stays about the same." },
         { "drv_char", "Character", K::Float, 0, 10, 5, 0, "", nullptr, "Character: shapes the tone of the selected voice. Lower is darker and fuller, higher is brighter with more bite." },
         { "drv_out", "Drive Output", K::Float, -24, 12, 0, 0, "dB", nullptr, "Output: a volume trim for the amp, after the distortion." },
@@ -26,10 +26,14 @@ std::vector<Def> makeDefs()
         { "drv_lowlvl", "Low Level", K::Float, -24, 12, 0, 0, "dB", nullptr, "Low level: volume of the clean low band inside the Drive channel." },
         { "drv_midlvl", "Mid Level", K::Float, -24, 12, 0, 0, "dB", nullptr, "Mid level: volume of the growl band." },
         { "drv_highlvl", "High Level", K::Float, -24, 12, -3, 0, "dB", nullptr, "High level: volume of the bite band. Turn down if the sound gets fizzy." },
+        { "fz_mids", "Fuzz Mids", K::Float, 0, 10, 5, 0, "", nullptr, "Mids (Fuzz voice): low = scooped, classic fuzz wall; high = more middle so the bass cuts through the mix." },
+        { "fz_grit", "Fuzz Grit", K::Float, 0, 10, 5, 0, "", nullptr, "Grit (Fuzz voice): low is smooth and creamy, high gets rougher and more broken-up." },
+        { "fz_clip", "Fuzz Clip", K::Float, 0, 10, 10, 0, "", nullptr, "Clip (Fuzz voice): low = tighter, more compressed fuzz; high = louder, more open fuzz." },
         { "drv_lowmode", "Low End", K::Choice, 0, 2, 0, 0, "", "DI Priority|Hybrid|Full Parallel", "Low end: who supplies the deep bass. DI Priority lets the clean DI carry it (tightest). Full Parallel lets both carry it (biggest)." },
 
         // ---------------------------------------------------------------- DI
         { "di_comp_on", "DI Comp On", K::Bool, 0, 1, 1, 0, "", nullptr, "Turns the DI compressor on or off." },
+        { "di_comp_style", "DI Comp Style", K::Choice, 0, 1, 0, 0, "", "FET|Opto", "Compressor style: FET grabs fast and keeps every note even. Opto is slower and smoother, like a gentle hand on the fader." },
         { "di_comp", "Compression", K::Float, 0, 10, 3.5f, 0, "", nullptr, "Compression: evens out your playing so soft and hard notes sit at a similar level." },
         { "di_comp_out", "DI Comp Output", K::Float, -12, 12, 0, 0, "dB", nullptr, "Output: volume after the compressor." },
         { "di_eq_on", "DI EQ On", K::Bool, 0, 1, 1, 0, "", nullptr, "Turns the DI tone controls on or off." },
@@ -247,6 +251,8 @@ void Bridge::fill (bassforge::EngineParams& e) const noexcept
     e.xoverLow = f ("drv_xlow"); e.xoverHigh = f ("drv_xhigh"); e.midDriveDb = f ("drv_middrive"); e.highDriveDb = f ("drv_highdrive");
     e.lowComp = f ("drv_lowcomp") / 10.0; e.lowLevelDb = f ("drv_lowlvl"); e.midLevelDb = f ("drv_midlvl"); e.highLevelDb = f ("drv_highlvl");
     e.ownership = (LowOwnership) i ("drv_lowmode");
+    e.fuzzMids = f ("fz_mids") / 10.0; e.fuzzGrit = f ("fz_grit") / 10.0; e.fuzzClip = f ("fz_clip") / 10.0;
+    e.diOpto = i ("di_comp_style") == 1;
     e.diCompOn = b ("di_comp_on"); e.diComp = f ("di_comp") / 10.0; e.diCompOutDb = f ("di_comp_out");
     e.diEqOn = b ("di_eq_on"); e.diBassDb = f ("di_bass"); e.diMidDb = f ("di_mid"); e.diTrebleDb = f ("di_treble");
     e.diBassHz = f ("di_bass_f"); e.diMidHz = f ("di_mid_f"); e.diMidQ = f ("di_mid_q"); e.diTrebleHz = f ("di_treble_f");

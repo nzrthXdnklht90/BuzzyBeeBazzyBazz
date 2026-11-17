@@ -49,6 +49,8 @@ private:
     Knob drvDrive, drvChar, drvOut;
     Knob xLow, xHigh, midDrive, highDrive, lowComp, lowLvl, midLvl, highLvl;
     Segmented lowMode;
+    Knob fzMids, fzGrit, fzClip;
+    Segmented compStyle;
     juce::Label lowModeCaption, charHint;
     PowerButton compOn, eqOn;
     Knob comp, compOut, bass, mid, treble, bassF, midF, midQ, trebF;

@@ -53,6 +53,7 @@ void Engine::prepare (double sampleRate, int maxBlockIn)
 
     lowComp.prepare (fs);
     fet.prepare (fs);
+    diOptoComp.prepare (fs);
     diEq.prepare (fs);
     cab.prepare (fs);
     peq.prepare (fs);
@@ -65,7 +66,7 @@ void Engine::prepare (double sampleRate, int maxBlockIn)
     for (auto* r : { &gIn, &gDriveOut, &gLow, &gMid, &gHigh, &gOwn, &gFDrive, &gFDi, &gFRoom, &gAudDrive, &gAudDi, &gAudRoom, &gMaster, &gLevelOut, &gDiOut })
         r->setRampLength ((int) (0.02 * fs));
     const int fadeLen = (int) (0.012 * fs);
-    for (auto* f : { &fDrive, &fCab, &fPeq, &fFet, &fDiEq, &fRoom, &fMixEq, &fLevel, &fProtect, &fQuality, &fRoomType })
+    for (auto* f : { &fDrive, &fCab, &fPeq, &fFet, &fDiEq, &fRoom, &fMixEq, &fLevel, &fProtect, &fQuality, &fRoomType, &fFuzz, &fDiStyle })
         f->setLength (fadeLen);
     sXLow.setTime (25.0, fs / kChunk);
     sXHigh.setTime (25.0, fs / kChunk);
@@ -93,7 +94,7 @@ void Engine::reset() noexcept
     padMid.reset(); padHigh.reset();
     midBank.reset(); highBank.reset();
     lowDelay.reset(); cleanDelay.reset(); diDelay.reset();
-    fet.reset(); diEq.reset(); cab.reset(); peq.reset(); room.reset(); mixEq.reset(); opto.reset(); guard.reset();
+    fet.reset(); diOptoComp.reset(); fuzzShelf.reset(); diEq.reset(); cab.reset(); peq.reset(); room.reset(); mixEq.reset(); opto.reset(); guard.reset();
     firstControl = true;
 }
 
@@ -148,11 +149,15 @@ void Engine::updateControls() noexcept
     VoiceSetup vs;
     vs.drive = std::clamp (p.drive, 0.0, 1.0);
     vs.character = std::clamp (p.character, 0.0, 1.0);
+    vs.fuzzMids = p.fuzzMids; vs.fuzzGrit = p.fuzzGrit; vs.fuzzClip = p.fuzzClip;
     vs.role = BandRole::Mid; vs.offsetDb = p.midDriveDb;
     midBank.setup (p.model, vs);
     vs.role = BandRole::High; vs.offsetDb = p.highDriveDb;
     highBank.setup (p.model, vs);
     lowComp.setAmount (p.lowComp);
+    fFuzz.setOn (p.model == DriveModel::Fuzz);
+    fuzzHighPre = dbToGain (p.highDriveDb);   // Fuzz mode: High Drive = how much of the high band feeds the fuzz
+    fuzzShelfC.makeHighShelf (SvfCoeffs::prewarp (fHi, fs), fFuzz.value() * p.highLevelDb, SvfCoeffs::kButterworth);
 
     // ---- low-frequency ownership: how much of the fundamental the Drive low band keeps.
     // DI Priority -12 dB, Hybrid -6 dB, Full Parallel 0 dB, scaled by how present the DI really is
@@ -195,6 +200,12 @@ void Engine::updateControls() noexcept
     rp.room = roomTypeApplied;
 
     fet.setAmount (p.diComp);
+    diOptoComp.setAmount (p.diComp);
+    // matched to the FET style on a bass phrase: same average gain reduction (+11 dB detector gain)
+    // and the same output level (extra make-up) at every Compression setting (docs/study_electric_toad.md)
+    diOptoComp.sideGainDb = 11.0;
+    diOptoComp.extraMakeupDb = 5.5 * std::pow (std::clamp (p.diComp, 0.0, 1.0), 1.5);
+    fDiStyle.setOn (p.diOpto);
     diEq.setParams (p);
     cab.setParams (p);
     peq.setParams (p.peq);
@@ -207,6 +218,7 @@ void Engine::updateControls() noexcept
     {
         for (auto* r : { &gIn, &gDriveOut, &gLow, &gMid, &gHigh, &gOwn, &gFDrive, &gFDi, &gFRoom, &gAudDrive, &gAudDi, &gAudRoom, &gMaster, &gLevelOut, &gDiOut })
             r->snapTo (r->getTarget());
+        fFuzz.snap (p.model == DriveModel::Fuzz); fDiStyle.snap (p.diOpto);
         fDrive.snap (p.driveOn); fCab.snap (p.cabOn); fPeq.snap (p.peqOn); fFet.snap (p.diCompOn); fDiEq.snap (p.diEqOn);
         fRoom.snap (p.roomOn); fMixEq.snap (p.mixEqOn); fLevel.snap (p.levelOn); fProtect.snap (p.protectOn);
         if (! qualityPending) fQuality.snap (true);
@@ -241,6 +253,15 @@ void Engine::processChunk (int n) noexcept
     }
 
     // ================================================================ mid / high nonlinear bands
+    const bool fuzzAny = ! fFuzz.isFullyOff();
+    const bool highNeeded = ! fFuzz.isFullyOn();
+    if (fuzzAny)
+        for (int i = 0; i < n; ++i)
+        {
+            const double w = fFuzz.next();
+            bMid[(size_t) i] += w * fuzzHighPre * bHigh[(size_t) i];
+            bHigh[(size_t) i] *= 1.0 - w;
+        }
     if (driveActive)
     {
         const int nOs = n * factor;
@@ -249,10 +270,23 @@ void Engine::processChunk (int n) noexcept
         if (osPadTop[q] > 0) for (int i = 0; i < nOs; ++i) bOsMid[(size_t) i] = padMid.process (bOsMid[(size_t) i], (size_t) osPadTop[q]);
         osMid[q].downsample (bOsMid.data(), bMid.data(), n);
 
-        osHigh[q].upsample (bHigh.data(), bOsHigh.data(), n);
-        highBank.process (bOsHigh.data(), nOs);
-        if (osPadTop[q] > 0) for (int i = 0; i < nOs; ++i) bOsHigh[(size_t) i] = padHigh.process (bOsHigh[(size_t) i], (size_t) osPadTop[q]);
-        osHigh[q].downsample (bOsHigh.data(), bHigh.data(), n);
+        if (highNeeded)
+        {
+            osHigh[q].upsample (bHigh.data(), bOsHigh.data(), n);
+            highBank.process (bOsHigh.data(), nOs);
+            if (osPadTop[q] > 0) for (int i = 0; i < nOs; ++i) bOsHigh[(size_t) i] = padHigh.process (bOsHigh[(size_t) i], (size_t) osPadTop[q]);
+            osHigh[q].downsample (bOsHigh.data(), bHigh.data(), n);
+        }
+        else
+        {
+            std::fill (bHigh.begin(), bHigh.begin() + n, 0.0);   // Fuzz mode: the high band is inside the fuzz
+            highBank.reset();
+            osHigh[q].reset(); padHigh.reset();
+        }
+        if (fuzzAny)
+            for (int i = 0; i < n; ++i) bMid[(size_t) i] = fuzzShelf.process (bMid[(size_t) i], fuzzShelfC);
+        else
+            fuzzShelf.reset();
     }
 
     for (int i = 0; i < n; ++i)
@@ -323,7 +357,14 @@ void Engine::processChunk (int n) noexcept
         // two fundamentals add coherently (no partial cancellation around the crossover points)
         double d = diAp2.process (diAp1.process (diDelay.process (inMono[(size_t) i], (size_t) lat), apLoC), apC);
         const double wf = fFet.next();
-        if (wf > 0.0) d = wf * fet.process (d) * gDiOut.next() + (1.0 - wf) * d;
+        const double ws = fDiStyle.next();   // 0 = FET, 1 = Opto
+        if (wf > 0.0)
+        {
+            double c = 0.0;
+            if (ws < 1.0) c += (1.0 - ws) * fet.process (d);
+            if (ws > 0.0) { double l = d, r = d; diOptoComp.processFrame (l, r); c += ws * l; }
+            d = wf * c * gDiOut.next() + (1.0 - wf) * d;
+        }
         else gDiOut.next();
         const double we = fDiEq.next();
         if (we > 0.0) d = we * diEq.process (d) + (1.0 - we) * d;
@@ -331,9 +372,11 @@ void Engine::processChunk (int n) noexcept
         bDi[(size_t) i] = d;
         pDi.push (d);
     }
-    if (fFet.isFullyOff()) fet.reset();
+    if (fFet.isFullyOff()) { fet.reset(); diOptoComp.reset(); }
+    else if (fDiStyle.isFullyOn()) fet.reset();
+    else if (fDiStyle.isFullyOff()) diOptoComp.reset();
     if (fDiEq.isFullyOff()) diEq.reset();
-    grDi = fet.getGrDb();
+    grDi = fDiStyle.value() > 0.5 ? diOptoComp.getGrDb() : fet.getGrDb();
 
     // ================================================================ ROOM return
     const bool roomActive = ! fRoom.isFullyOff();

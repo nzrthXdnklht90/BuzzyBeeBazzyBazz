@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.2.0 — 2026-11-17 (experimental)
+
+Changes requested after the first listening session.
+
+* **New FUZZ voice replaces VINTAGE.** The voice order is now **Drive / Fuzz / Modern**. Fuzz is a reduced-order
+  model of the Swollen Pickle MkII-topology circuit taken from the Big Dill project (same netlist and
+  component values, NAM-calibrated diodes). It is fitted against Big Dill's validated full-circuit
+  engine; see `docs/fuzz_voice_report.md`.
+  * Like a real fuzz pedal, it runs as **one** fuzz across the mid and high bands while the low band stays
+    clean underneath (Low End ownership still applies).
+  * Drive = Sustain, Character = Tone (Filter). New **Mids / Grit / Clip** controls (Scoop / Crunch /
+    Clip) appear under the main knobs when Fuzz is selected.
+  * In Fuzz mode, Mid Drive is the fuzz input trim, High Drive sets how much of the high band feeds the
+    fuzz, and High Level becomes a post-fuzz brightness shelf above the High Split.
+  * Three new fuzz factory presets: *Fuzz Wall*, *Doom Fuzz*, *Fuzz Cut-Through*. *Classic Vintage* and
+    *Roomy Vintage* became *Classic Drive* and *Roomy Drive*.
+* **DI compressor: FET | OPTO switch** (idea from the Electric Toad study, `docs/study_electric_toad.md`).
+  OPTO is an optical feedback compressor, level-matched to FET (within 1 dB) at every Compression setting.
+* **Loudness compensation recalibrated on decaying plucks.** All voices and Drive settings are now within
+  1.4 dB of each other on a bass phrase (was 2.7 dB).
+* **Session compatibility:** sessions from 0.1 that used Vintage or Drive open on Drive; Modern stays
+  Modern.
+* Tests: 22 (new: FUZZ-01 pot behaviour, ENG-DISTYLE), all passing.
+
 ## 0.1.0 — 2026-11-16 (experimental)
 
 First complete build: Milestone 0 (architecture) plus prototype-level coverage of Milestones 1–7.

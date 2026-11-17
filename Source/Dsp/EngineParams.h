@@ -5,7 +5,7 @@
 namespace bassforge
 {
 enum class Quality { Eco = 0, Standard = 1, High = 2 };          // 2x / 4x / 8x around the nonlinear stages
-enum class DriveModel { Vintage = 0, Drive = 1, Modern = 2 };
+enum class DriveModel { Drive = 0, Fuzz = 1, Modern = 2 };   // v0.2: Fuzz replaced Vintage
 enum class LowOwnership { DiPriority = 0, Hybrid = 1, FullParallel = 2 };
 enum class CabModel { Alu410 = 0, Classic810 = 1, Deep215 = 2, Modern410 = 3 };
 enum class MicType { Dynamic = 0, Condenser = 1, Ribbon = 2 };
@@ -37,7 +37,7 @@ struct EngineParams
 
     // DRIVE
     bool driveOn = true;
-    DriveModel model = DriveModel::Vintage;
+    DriveModel model = DriveModel::Drive;
     double drive = 0.4;          // 0..1 macro
     double character = 0.5;      // 0..1 model dependent
     double driveOutDb = 0.0;
@@ -46,9 +46,11 @@ struct EngineParams
     double lowComp = 0.5;        // 0..1
     double lowLevelDb = 0.0, midLevelDb = 0.0, highLevelDb = -3.0;
     LowOwnership ownership = LowOwnership::DiPriority;
+    double fuzzMids = 0.5, fuzzGrit = 0.5, fuzzClip = 1.0;   // FUZZ voice: Scoop, Crunch, Clip (0..1, pedal pot rotation)
 
     // DI
     bool diCompOn = true, diEqOn = true;
+    bool diOpto = false;          // DI compressor style: false = FET, true = optical
     double diComp = 0.35, diCompOutDb = 0.0;
     double diBassDb = 0.0, diMidDb = 0.0, diTrebleDb = 0.0;
     double diBassHz = 100.0, diMidHz = 700.0, diMidQ = 0.7, diTrebleHz = 3000.0;

@@ -114,7 +114,7 @@ void OptoLeveller::processFrame (double& l, double& r) noexcept
         return;
     }
     // feedback detector: previous output, driven by the Amount (peak reduction) knob
-    const double drive = lastOut * dbToGain (36.0 * amount);
+    const double drive = lastOut * dbToGain (36.0 * amount + sideGainDb);
     light = drive > light ? drive + (light - drive) * aLightUp : drive + (light - drive) * aLightDown;
     cellFast = light > cellFast ? light + (cellFast - light) * aFastUp : light + (cellFast - light) * aFastDown;
     if (light > cellSlow)
@@ -131,7 +131,7 @@ void OptoLeveller::processFrame (double& l, double& r) noexcept
     grDb = softKneeGr (cellDb, -6.0, 3.0, 10.0);
     // feedback designs need extra loop gain: scale reduction so heavy Amount settings still level
     grDb *= 1.6;
-    const double makeupDb = 0.4 * 12.0 * amount;             // partial make-up (TUNABLE)
+    const double makeupDb = 0.4 * 12.0 * amount + extraMakeupDb;   // partial make-up (TUNABLE)
     const double g = dbToGain (grDb + makeupDb);
     l *= g;
     r *= g;

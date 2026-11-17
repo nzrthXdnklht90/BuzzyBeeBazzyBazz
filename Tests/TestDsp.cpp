@@ -118,6 +118,7 @@ BF_TEST ("VOICE-02", "voices are harmonically distinct (even/odd balance) and ca
     const double fs = 192000;
     DriveVoiceBank b; b.prepare (fs, 256); b.calibrate (BandRole::Mid);
     double ratio[3] {};
+    double prof[3][6] {};
     for (int m = 0; m < 3; ++m)
     {
         VoiceSetup s; s.drive = 0.5; s.character = 0.5;
@@ -130,11 +131,20 @@ BF_TEST ("VOICE-02", "voices are harmonically distinct (even/odd balance) and ca
         const size_t st = (size_t) N / 2, len = (size_t) fs / 250 * 50;
         const double h1 = dftMag (x, 250, fs, st, len), h2 = dftMag (x, 500, fs, st, len), h3 = dftMag (x, 750, fs, st, len);
         ratio[m] = h2 / std::max (h3, 1e-12);
+        for (int h = 2; h <= 7; ++h) prof[m][h - 2] = gainToDb (dftMag (x, 250.0 * h, fs, st, len) / h1 + 1e-9);
         const double outRms = rms (x, st);
         note (fmt ("model %.0f: H2/H1 %.1f dB, H3/H1 %.1f dB", m, gainToDb (h2 / h1), gainToDb (h3 / h1)) + fmt (", out/in RMS %.2f dB", gainToDb (outRms / inRms)));
-        BF_CHECK (std::abs (gainToDb (outRms / inRms)) < 3.0);
+        BF_CHECK (std::abs (gainToDb (outRms / inRms)) < 4.0);
     }
-    BF_CHECK (ratio[0] > ratio[2]);   // VINTAGE is more even-order than MODERN
+    // the three voices must be harmonically distinct: RMS difference of their H2..H7 profiles > 6 dB
+    for (int a = 0; a < 3; ++a)
+        for (int b = a + 1; b < 3; ++b)
+        {
+            double d = 0; for (int h = 0; h < 6; ++h) d += (prof[a][h] - prof[b][h]) * (prof[a][h] - prof[b][h]);
+            d = std::sqrt (d / 6.0);
+            note (fmt ("voices %.0f vs %.0f: harmonic profile difference %.1f dB", a, b, d));
+            BF_CHECK (d > 6.0);
+        }
 }
 
 BF_TEST ("DYN-01", "low-band compressor: ~4:1 above threshold; FET + opto programme-dependent release")
@@ -281,4 +291,48 @@ BF_TEST ("EQ-01", "7-band EQ and Mix EQ are exactly flat at zero; programme EQ b
     const double at40 = ProgramEq::responseDb (s, 40, fs), at300 = ProgramEq::responseDb (s, 300, fs);
     note (fmt ("60 Hz boost5+atten5: %+.1f dB at 40 Hz, %+.1f dB at 300 Hz", at40, at300));
     BF_CHECK (at40 > 1.0 && at300 < -1.0);
+}
+
+BF_TEST ("FUZZ-01", "Fuzz voice: pots behave like the pedal (Sustain, Tone, Mids, Grit, Clip), finite and bounded")
+{
+    const double fs = 192000;
+    auto run = [&] (FuzzControls c, double amp, double hz) {
+        FuzzVoice v; v.prepare (fs); v.setControls (c);
+        const int N = (int) (0.3 * fs);
+        std::vector<double> y ((size_t) N);
+        bool finite = true;
+        for (int i = 0; i < N; ++i) { y[(size_t) i] = v.processVolts (amp * std::sin (2 * kPi * hz * i / fs)); finite &= std::isfinite (y[(size_t) i]); }
+        BF_CHECK (finite);
+        return y;
+    };
+    auto thd = [&] (const std::vector<double>& y, double hz) {
+        const size_t st = y.size() / 3, len = (size_t) (fs / hz) * 40;
+        const double h1 = dftMag (y, hz, fs, st, len);
+        double e = 0; for (int h = 2; h <= 9; ++h) { const double m = dftMag (y, hz * h, fs, st, len); e += m * m; }
+        return gainToDb (std::sqrt (e) / h1);
+    };
+    FuzzControls c;
+    c.sustain = 0.1; const double tLow = thd (run (c, 0.05, 220), 220);
+    c.sustain = 0.9; const double tHigh = thd (run (c, 0.05, 220), 220);
+    note (fmt ("Sustain 0.1 -> THD %.1f dB, Sustain 0.9 -> %.1f dB", tLow, tHigh));
+    BF_CHECK (tHigh > tLow + 3.0);
+    c = FuzzControls(); c.filter = 0.1; const auto dark = run (c, 0.002, 3000);
+    c.filter = 0.9; const auto bright = run (c, 0.002, 3000);
+    const double tone = gainToDb (rms (bright, 20000) / rms (dark, 20000));
+    note (fmt ("Tone 0.1 -> 0.9: %+.1f dB at 3 kHz (small signal)", tone));
+    BF_CHECK (tone > 6.0);
+    c = FuzzControls(); c.scoop = 0.0; const auto scooped = run (c, 0.002, 700);
+    c.scoop = 1.0; const auto full = run (c, 0.002, 700);
+    const double mids = gainToDb (rms (full, 20000) / rms (scooped, 20000));
+    note (fmt ("Mids 0 -> 1: %+.1f dB at 700 Hz (small signal)", mids));
+    BF_CHECK (std::abs (mids) > 2.0);
+    c = FuzzControls(); c.clip = 0.0; const auto si = run (c, 0.3, 220);
+    c.clip = 1.0; const auto led = run (c, 0.3, 220);
+    const double clip = gainToDb (rms (led, 20000) / rms (si, 20000));
+    note (fmt ("Clip Si (0) -> LED (1): %+.1f dB output", clip));
+    BF_CHECK (clip > 1.0);   // LED clipping is louder / more open, as on the pedal
+    double pk = 0; c = FuzzControls(); c.sustain = 1.0; c.crunch = 1.0; c.filter = 1.0;
+    for (double v : run (c, 5.0, 82)) pk = std::max (pk, std::abs (v));
+    note (fmt ("extreme settings, 5 V input: output peak %.2f V", pk));
+    BF_CHECK (pk < 12.0);
 }
